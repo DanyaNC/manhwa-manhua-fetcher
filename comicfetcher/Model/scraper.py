@@ -1,6 +1,8 @@
 from genericpath import isfile
 from bs4 import BeautifulSoup
 from tempfile import NamedTemporaryFile
+
+from bs4.element import Tag
 from Model.comic import Comic
 import shutil
 import lxml
@@ -72,7 +74,7 @@ def process_reaper_scans(html_file : str, comic : Comic) -> deque:
     #Stores 2 strings in a list, which are of the format:
     #Chapter ###, indicating the chapter's number,
     #A line stating how long ago the chapter was uploaded (e.g. 30 mins ago, 2 days ago)
-    latest_chapter_info : list = list(latest_chapter.text.strip().replace('\t', '').split('\n'))
+    latest_chapter_info : list = latest_chapter.text.strip().replace('\t', '').split('\n')
  
     #Extract integers from the chapter number string. Use this to check if it is greater than the
     #previously checked number stored in our data.
@@ -121,13 +123,18 @@ def process_reaper_scans(html_file : str, comic : Comic) -> deque:
         return new_chapters
     else:
         #No new chapter was found, return.
-        return
+        return None
 
 def process_asura_flame_scans(html_file : str, comic : Comic) -> deque:
     soup = BeautifulSoup(html_file, "lxml")
     any_int = re.compile('^[-+]?[0-9]+$')
     latest_chapter = soup.find('li', attrs={"data-num" : any_int})
-    
+    latest_chapter_text = latest_chapter.text
+    latest_chapter_info = get_chapter_info(latest_chapter_text)
+    latest_chapter_number = get_chapter_number()
+    if(latest_chapter > int(comic.get_latest_chapter)):
+        new_chapters = get_all_new_chapters()
+
     
 
 def retrieve_reaper_image(comic_image_url : str, comic_name : str, soup) -> str:
@@ -167,6 +174,21 @@ def download_file(url : str, local_filename : str):
         print("Failed to download image")
         local_filename = None
     return local_filename
+
+def get_all_new_chapters(latest_chapter : Tag, latest_chapter_info : list) -> deque:
+    new_chapters = deque()
+    #Append our initial gotten info because we know that it is a new chapter
+    latest_chapter_url = latest_chapter.a['href']
+    latest_chapter_info.append(latest_chapter_url)
+    # print(f"The info with url appended: {latest_chapter_info}")
+    new_chapters.appendleft(latest_chapter_info)
+    pass
+
+def get_chapter_url(chapter):
+    return chapter.a['href']
+
+def get_chapter_info(html_text : str) -> list:
+    return html_text.strip().replace('\t', '').split('\n')
 
 def get_chapter_number(latest_chapter_info : list):
     return int(re.search(r'\d+', latest_chapter_info[0]).group())
