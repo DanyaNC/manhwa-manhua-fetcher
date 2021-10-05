@@ -56,8 +56,8 @@ def process_html(comic: Comic):
 
 def derive_image_path(url: str, comic_name: str):
     file_format = os.path.splitext(url)[1]
-    comic_name = comic_name.replace(" ", "")
-    local_filename = f"comicfetcher/Model/imgs/{comic_name}{file_format}"
+    comic_name_no_spaces = comic_name.replace(" ", "")
+    local_filename = f"comicfetcher/Model/imgs/{comic_name_no_spaces}{file_format}"
     return local_filename
 
 
@@ -91,8 +91,7 @@ def process_reaper_scans(html_file: str, comic: Comic) -> deque:
         # print(f"The info with url appended: {latest_chapter_info}")
         new_chapters.appendleft(latest_chapter_info)
 
-        comic_image_url = soup.find('a', id='roi')
-        path_to_image = retrieve_reaper_image(comic_image_url, comic.get_name(), soup)
+        path_to_image = get_comic_image(comic.get_name(), soup, "reaperscans")
         new_chapters.appendleft(path_to_image)
 
         # Retrieve our last read/checked chapter for our end boundary of loop
@@ -126,7 +125,7 @@ def process_reaper_scans(html_file: str, comic: Comic) -> deque:
         return None
 
 
-def process_asura_flame_scans(html_file: str, comic: Comic) -> deque:
+def process_asura_flame_scans(html_file: Tag, comic: Comic, domain_name: str) -> deque:
     soup = BeautifulSoup(html_file, "lxml")
     any_int = re.compile('^[-+]?[0-9]+$')
     latest_chapter = soup.find('li', attrs={'data-num': any_int})
@@ -137,28 +136,55 @@ def process_asura_flame_scans(html_file: str, comic: Comic) -> deque:
         new_chapters = get_all_new_chapters()
 
 
-def retrieve_reaper_image(comic_image_url: str, comic_name: str, soup) -> str:
+def get_comic_image(comic_name: str, soup, domain_name: str) -> str:
+    if(domain_name == "reaperscans"):
+        image_url = parse_reaper_image_url(soup)
+    elif(domain_name == "asuraflame"):
+        image_url = parse_asuraorflame_image_url(soup)
+    if(image_url is not None):
+        image_file_path = derive_image_path(image_url, comic_name)
+        if(ALWAYS_DOWNLOAD_IMG == 0 and check_if_image_is_downloaded(image_file_path)):
+            print(f"Image for {comic_name} is already downloaded.")
+            return image_file_path
+        else:
+            image_file_path = download_file(image_url, image_file_path)
+            return image_file_path
+    else:
+        return None
+
+
+def parse_reaper_image_url(soup) -> str:
+    # Find location of the img URL in the HTML
+    comic_image_url = soup.find('a', id='roi')
     if(comic_image_url is None):
-        # Find location of the img URL in the HTML
+        # Not an animated img page, need different approach
         comic_image_url = soup.find('div', class_='summary_image')
         # Extract the URL
         comic_image_url = comic_image_url.find('img')['data-srcset'].split(',')[1].strip().split(" ")[0]
         print(comic_image_url)
     else:
+        # Extract the URL
         comic_image_url = comic_image_url.find('img')['data-srcset'].split(',')[1].strip().split(" ")[0]
         print(comic_image_url)
     if(comic_image_url is None):
         print("Unable to get the URL for the cover image, perhaps the site's HTML changed?")
         return None
+    return comic_image_url
+
+
+def parse_asuraorflame_image_url(soup) -> str:
+    comic_image_url = soup.find('div', class_='thumb').find('img')['src']
+    if(comic_image_url is None):
+        print("Unable to get image URL for asura/flame, perhaps the site's HTML changed?")
+    return comic_image_url
+
+
+def check_if_image_is_downloaded(image_file_path: str) -> bool:
+    if(os.path.isfile(image_file_path)):
+        return True
     else:
-        image_file_path = derive_image_path(comic_image_url, comic_name)
-        if(os.path.isfile(image_file_path) and ALWAYS_DOWNLOAD_IMG == 0):
-            # Image already exists, no need to download it for this comic.
-            print(f"Image for {comic_name} is already downloaded.")
-            pass
-        else:
-            download_file(comic_image_url, image_file_path)
-        return image_file_path
+        return False
+
 
 
 # Referenced from https://stackoverflow.com/questions/16694907/download-large-file-in-python-with-requests
