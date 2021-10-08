@@ -9,23 +9,24 @@ import lxml
 import re
 import requests
 from collections import deque
-import os
+import os.path
 from urllib.parse import urlparse
 
 
 # Test method for first practicing on a local file
 # of the website's downloaded html file
 # def open_html():
-#     with open("Test_HTML-Website/html_test.html", "r", encoding='utf8') as f:
-#         html_file = BeautifulSoup(f, "lxml")
+#     with open("Test_HTML-Website/heavenly_martial_god.html", "r", encoding='utf8') as f:
+#         html_file = f.read()
 #     return html_file
 
 ALWAYS_DOWNLOAD_IMG = 0
+HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36'}
 
 
 def open_html(URL):
     try:
-        html_file = requests.get(URL).text
+        html_file = requests.get(URL, headers=HEADERS).text
     except Exception:
         print("Error occured requesting html from URL in method open_html")
         return
@@ -36,19 +37,18 @@ def process_html(comic: Comic):
     URL = comic.get_url()
     # soup = open_html()
     html_file = open_html(URL)
-
     # Possible that we failed to retrieve the htmlfile, in which case, don't
     # attempt the rest of the method
     if(html_file is None):
         return
-
     domain_name = urlparse(URL).netloc
     chapter_queue = None
     if(domain_name == "reaperscans.com"):
-        chapter_queue = process_reaper_scans(html_file, comic)
+        chapter_queue = process_reaper_scans(html_file, comic, "reaperscans")
         return chapter_queue
-    elif(domain_name == "asurascans.com" or domain_name == "flamescans.org"):
-        chapter_queue = process_asura_flame_scans(html_file, comic)
+    elif(domain_name == "www.asurascans.com" or domain_name == "flamescans.org"):
+        chapter_queue = process_asura_flame_scans(html_file, comic, "asuraflame")
+        return chapter_queue
     else:
         print("Incompatible website provided as URL")
         return chapter_queue
@@ -61,7 +61,7 @@ def derive_image_path(url: str, comic_name: str):
     return local_filename
 
 
-def process_reaper_scans(html_file: str, comic: Comic) -> deque:
+def process_reaper_scans(html_file: str, comic: Comic, domain_name: str) -> deque:
     soup = BeautifulSoup(html_file, 'lxml')
 
     latest_chapter = soup.find('li', class_='wp-manga-chapter')
@@ -70,70 +70,43 @@ def process_reaper_scans(html_file: str, comic: Comic) -> deque:
     # Chapter ###, indicating the chapter's number,
     # A line stating how long ago the chapter was uploaded
     # (e.g. 30 mins ago, 2 days ago)
-    latest_chapter_info: list = latest_chapter.text.strip().replace('\t', '').split('\n')
+    latest_chapter_info: list = get_chapter_info(latest_chapter)
 
     # Extract integers from the chapter number string.
     # Use this to check if it is greater than the
     # previously checked number stored in our data.
     latest_chapter_number = get_chapter_number(latest_chapter_info)
-    # print(latest_chapter_number)
+
     # If the html has a chapter newer than what we have stored
     # as being the last, it is a new chapter
     if(latest_chapter_number > int(comic.get_latest_chapter())):
-        # new_chapters contains lists of each chapter's info
-        # Chapter #, and Date Posted
-        new_chapters = deque()
-        # Append our initial gotten info
-        # because we know that it is a new chapter
-        latest_chapter_url = latest_chapter.a['href']
-        # print(f"The latest chapter url is: {latest_chapter_url}")
-        latest_chapter_info.append(latest_chapter_url)
-        # print(f"The info with url appended: {latest_chapter_info}")
-        new_chapters.appendleft(latest_chapter_info)
-
-        path_to_image = get_comic_image(comic.get_name(), soup, "reaperscans")
-        new_chapters.appendleft(path_to_image)
-
-        # Retrieve our last read/checked chapter for our end boundary of loop
-        old_chapter_number = int(comic.get_latest_chapter())
-        # We are now checking chapters one by one so
-        # using name next instead of last as they are no longer the latest
-        next_chapter = latest_chapter
-        next_chapter_number = latest_chapter_number
-        # Iterate through the siblings of the li class tree, aka the chapters,
-        # until we are no longer dealing with new chapters.
-        # Each chapter's info (Chapter # and date)
-        # gets added to the queue as well as it's URL.
-        while(next_chapter_number > old_chapter_number+1):
-            try:
-                next_chapter = next_chapter.find_next_sibling('li')
-                next_chapter_url = next_chapter.a['href']
-                next_chapter_info = next_chapter.text.strip().replace('\t', '').split('\n')
-                next_chapter_info.append(next_chapter_url)
-                # Loop variable changes here, gets decreased as we go down list of chapters
-                next_chapter_number = get_chapter_number(next_chapter_info)
-                new_chapters.append(next_chapter_info)
-            except Exception:
-                # It is possible website messed up an upload, resulting in improper naming,
-                # no url associated with a chapter, or other errors.
-                print("Error occured while looping through chapters")
-                break
-        comic.set_latest_chapter(str(latest_chapter_number))
+        new_chapters = get_all_new_chapters(latest_chapter, latest_chapter_info,
+                                            domain_name, latest_chapter_number, comic, soup)
         return new_chapters
     else:
-        # No new chapter was found, return.
+        # No new chapters were found, return.
         return None
 
 
 def process_asura_flame_scans(html_file: Tag, comic: Comic, domain_name: str) -> deque:
     soup = BeautifulSoup(html_file, "lxml")
     any_int = re.compile('^[-+]?[0-9]+$')
-    latest_chapter = soup.find('li', attrs={'data-num': any_int})
-    latest_chapter_text = latest_chapter.text
-    latest_chapter_info = get_chapter_info(latest_chapter_text)
-    latest_chapter_number = get_chapter_number()
-    if(latest_chapter > int(comic.get_latest_chapter)):
-        new_chapters = get_all_new_chapters()
+    latest_chapter_html = soup.find('li', attrs={'data-num': any_int})
+    # Stores 2 strings in a list, which are of the format:
+    # Chapter ###, indicating the chapter's number,
+    # A line stating how long ago the chapter was uploaded
+    # (e.g. 30 mins ago, 2 days ago)
+    latest_chapter_info = get_chapter_info(latest_chapter_html)
+
+    latest_chapter_number = get_chapter_number(latest_chapter_info)
+    old_chapter_number = int(comic.get_latest_chapter())
+    if(latest_chapter_number > old_chapter_number+1):
+        new_chapters = get_all_new_chapters(latest_chapter_html, latest_chapter_info,
+                                            domain_name, latest_chapter_number, comic, soup)
+        return new_chapters
+    else:
+        # No new chapters were found
+        return None
 
 
 def get_comic_image(comic_name: str, soup, domain_name: str) -> str:
@@ -161,11 +134,9 @@ def parse_reaper_image_url(soup) -> str:
         comic_image_url = soup.find('div', class_='summary_image')
         # Extract the URL
         comic_image_url = comic_image_url.find('img')['data-srcset'].split(',')[1].strip().split(" ")[0]
-        print(comic_image_url)
     else:
         # Extract the URL
         comic_image_url = comic_image_url.find('img')['data-srcset'].split(',')[1].strip().split(" ")[0]
-        print(comic_image_url)
     if(comic_image_url is None):
         print("Unable to get the URL for the cover image, perhaps the site's HTML changed?")
         return None
@@ -186,7 +157,6 @@ def check_if_image_is_downloaded(image_file_path: str) -> bool:
         return False
 
 
-
 # Referenced from https://stackoverflow.com/questions/16694907/download-large-file-in-python-with-requests
 def download_file(url: str, local_filename: str):
     # NOTE the stream=True parameter
@@ -202,23 +172,45 @@ def download_file(url: str, local_filename: str):
     return local_filename
 
 
-def get_all_new_chapters(latest_chapter: Tag, latest_chapter_info: list) -> deque:
+def get_all_new_chapters(latest_chapter: Tag, latest_chapter_info: list,
+                         domain_name: str, latest_chapter_number: int, comic: Comic, soup: BeautifulSoup) -> deque:
+    # new_chapters contains lists of each chapter's info
+    # Chapter #, and Date Posted
+    # As well as a file path to the comic's cover image at the front of the queue.
     new_chapters = deque()
     # Append our initial gotten info because we know that it is a new chapter
     latest_chapter_url = latest_chapter.a['href']
     latest_chapter_info.append(latest_chapter_url)
     # print(f"The info with url appended: {latest_chapter_info}")
     new_chapters.appendleft(latest_chapter_info)
-
-    pass
+    path_to_image = get_comic_image(comic.get_name(), soup, domain_name)
+    new_chapters.appendleft(path_to_image)
+    old_chapter_number = int(comic.get_latest_chapter())
+    next_chapter = latest_chapter
+    next_chapter_number = latest_chapter_number
+    while(next_chapter_number > old_chapter_number+1):
+        try:
+            next_chapter = next_chapter.find_next_sibling('li')
+            next_chapter_url = next_chapter.a['href']
+            next_chapter_info = get_chapter_info(next_chapter)
+            next_chapter_info.append(next_chapter_url)
+            next_chapter_number = get_chapter_number(next_chapter_info)
+            new_chapters.append(next_chapter_info)
+        except Exception:
+            # It is possible website messed up an upload, resulting in improper naming,
+            # no url associated with a chapter, or other errors.
+            print("Error occured while looping through chapters")
+            break
+    comic.set_latest_chapter(str(latest_chapter_number))
+    return new_chapters
 
 
 def get_chapter_url(chapter):
     return chapter.a['href']
 
 
-def get_chapter_info(html_text: str) -> list:
-    return html_text.strip().replace('\t', '').split('\n')
+def get_chapter_info(html_text: Tag) -> list:
+    return html_text.text.strip().replace('\t', '').split('\n')
 
 
 def get_chapter_number(latest_chapter_info: list):
