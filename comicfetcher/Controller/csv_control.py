@@ -19,6 +19,7 @@ def parse_csv():
     """
     tempfile = NamedTemporaryFile(mode='w', delete=False, newline='')
     fields = ['Names', 'Last_Chapter', 'URL']
+    new_chapter_flag = False
     with open('comicfetcher/Model/comics_list.csv', 'r') as comics_list, tempfile:
         csv_reader = csv.DictReader(comics_list)
         writer = csv.DictWriter(tempfile, fields, delimiter=',')
@@ -31,8 +32,10 @@ def parse_csv():
             if(new_chapter_info_queue is None):
                 print(f"No queue was made for comic: {comic.get_name}")
             else:
+                new_chapter_flag = True
                 email_formatter.format_chapter(new_chapter_info_queue, comic.get_name())
             time.sleep(12)
+    if new_chapter_flag:
         email_formatter.attach_closer()
 
 
