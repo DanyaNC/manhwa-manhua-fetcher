@@ -1,6 +1,7 @@
 from yattag import Doc
 from collections import deque
 import os
+from View import email
 doc, tag, text, line = Doc().ttl()
 # One-time run, append the New Chapter header to output html
 with open('comicfetcher/View/html_templates/intro.html', 'r', encoding='utf-8') as f:
@@ -46,7 +47,5 @@ def format_chapter(new_chapters: deque, comic_name: str):
 
 def attach_closer():
     doc.asis(closer_html)
-    with open('test.html', 'w') as f:
-        f.write(doc.getvalue())
-    # send_email(doc.getvalue())
+    email.send_email(doc.getvalue())
 
