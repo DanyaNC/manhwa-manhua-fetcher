@@ -1,0 +1,27 @@
+Web Scraper for Manhwas/Manhuas on Reaperscans, Asurascans, and Flamescans
+End goal:
+An automated webscraper that will run once every set amount of time (an hour),
+and check for new chapters of designated comics on the three websites. If there are new chapters,
+it will format a nicely structured email that contains all the new chapters with the name of
+the comic and it's cover image to the side of the links. Would be hosted on AWS as to not have 
+to have a computer on all the time. 
+
+Model:
+Fetch data - HTML from websites
+Process data - Sort through the html and find what's relevant,
+               chapter count, and the cover image.
+Send data - Should send the processed data to the view.
+
+View:
+Formatted data - Uses the data sent from the model to format and create an email
+                 that gets sent to the user.
+
+Controller:
+Contains list of comics - The list is a list of names and urls of comics that
+                          the user wants to keep track of. This modifies the models output
+                          by deciding the inputs.
+Constants - Should contain constants that a user might want to change often.
+            A constant about how long the script waits before fetching data again
+            (10 min, 1 hour, etc.), whether the user wants gifs of cover images when available,
+            email login,
+Run location - Will run from this location.
