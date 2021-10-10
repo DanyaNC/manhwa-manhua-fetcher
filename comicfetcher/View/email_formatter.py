@@ -35,13 +35,14 @@ def format_chapter(new_chapters: deque, comic_name: str):
     with tag('strong'):
         text(comic_name)
     doc.asis(post_name_html)
-    for _ in range(len(new_chapters)):
+    for i in range(len(new_chapters)):
         # TODO: Can't have Nones in deque, need to fix returns in model
         chapter_info = new_chapters.popleft()
         with tag('p', style="margin: 0; font-size: medium; text-align: center;"):
             with tag('a', href=str(chapter_info[2]), style="color:white"):
                 text(chapter_info[0])
             text(" " + str(chapter_info[1]))
+    
     doc.asis(post_chapter_html)
     doc.asis(banner_html)
 

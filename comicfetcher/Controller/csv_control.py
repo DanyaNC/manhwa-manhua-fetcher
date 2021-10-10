@@ -36,6 +36,7 @@ def parse_csv():
             # there was no new chapters, we should have a NONE for our queue.
             if(new_chapter_info_queue is None):
                 print(f"No queue was made for comic: {comic.get_name()}")
+                writer.writerow(line)
             else:
                 new_chapter_flag = True
                 email_formatter.format_chapter(new_chapter_info_queue, comic.get_name())

@@ -86,7 +86,8 @@ def process_reaper_scans(html_file: str, comic: Comic, domain_name: str) -> dequ
 
     # If the html has a chapter newer than what we have stored
     # as being the last, it is a new chapter
-    if(latest_chapter_number > int(comic.get_latest_chapter())):
+    old_chapter_number = int(comic.get_latest_chapter())
+    if(latest_chapter_number > old_chapter_number+1):
         new_chapters = get_all_new_chapters(latest_chapter, latest_chapter_info,
                                             domain_name, latest_chapter_number, comic, soup)
         return new_chapters
