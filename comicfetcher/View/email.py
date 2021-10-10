@@ -4,11 +4,11 @@ import os
 
 # Replace sender@example.com with your "From" address.
 # This address must be verified with Amazon SES.
-SENDER = "Sender Name <danyachinenkov@gmail.com>"
+SENDER = "Sender Name <example@gmail.com>"
 
 # Replace recipient@example.com with a "To" address. If your account 
 # is still in the sandbox, this address must be verified.
-RECIPIENT = "danyachinenkov@gmail.com"
+RECIPIENT = "example@gmail.com"
 
 # Specify a configuration set. If you do not want to use a configuration
 # set, comment the following variable, and the 

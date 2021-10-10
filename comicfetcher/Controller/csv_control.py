@@ -31,7 +31,11 @@ def parse_csv():
         for line in csv_reader:
             info_list = list(dict.values(line))
             comic = Comic(info_list)
-            new_chapter_info_queue = scraper.process_html(comic)
+            try:
+                new_chapter_info_queue = scraper.process_html(comic)
+            except Exception:
+                print(f"Something went wrong scraping {comic.get_name()}")
+                new_chapter_info_queue = None
             # If an error occured during the processing of the html, or
             # there was no new chapters, we should have a NONE for our queue.
             if(new_chapter_info_queue is None):
