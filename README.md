@@ -1,6 +1,8 @@
 # Manhwa Manhua Fetcher
 Scrapes a user selection of manhwas/manhuas from three websites of scanlation groups (Reaperscans, Asurascans, Flamescans) and emails the user if there are new chapters available for their selected comics, along with the comic's cover image and links to the new chapters.
 
+Sends the user an email with cover images and links to the new chapters for each comic using dynamically written HTML. Hosted using AWS Lambda which calls S3 to host images and data, and SES to send emails. Written in Python using BeautifulSoup4, Requests, Yattag, and Boto3. Deployed using the Serverless framework.
+
 ## A standard desktop view output:
 https://user-images.githubusercontent.com/6255532/139986573-eb57022c-5111-4632-a27e-f21a353ae1c0.mp4
 ## A standard mobile view output:
